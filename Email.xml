@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<emailprop>
+		<protocol>smtp</protocol>
+		<server>smtp.gmail.com</server>
+		<port>465</port>
+		<username>psdmarcelly@gmail.com</username>
+		<password>barbaridade</password>
+</emailprop>

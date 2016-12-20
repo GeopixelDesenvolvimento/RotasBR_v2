@@ -1,13 +1,18 @@
 package geopixel.model.external;
 
 import geopixel.service.DataBaseService;
+import geopixel.utils.Cryptography;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.List;
+
+import oracle.spatial.geometry.JGeometry;
+import oracle.sql.STRUCT;
 /**
  * Class to create Json and GeoJson from different sources : result sets, result set rows, arrays...
  * @author Freitas,U.M.
@@ -45,12 +50,12 @@ public class JSonUtils {
 					}else{
 						if (md.getColumnName(i).equals("GEOM")){
 							json += "\"" + md.getColumnName(i) + "\":\"" +""+ "\"";
-							System.out.println(md.getColumnName(i)+" : ");
+							//System.out.println(md.getColumnName(i)+" : ");
 						}
 						else
 						{
 							json += "\"" + md.getColumnName(i) + "\":\"" + rs.getString(i)+ "\"";
-							System.out.println(md.getColumnName(i)+" : "+rs.getString(i));
+							//System.out.println(md.getColumnName(i)+" : "+rs.getString(i));
 							
 						}
 					}	
@@ -96,14 +101,14 @@ public class JSonUtils {
 		String jsonFeatureArray = "";
 		// Create a select
 		sql = "select ";
-		for(int i =  1; i<= ncolumns; i++){
+		for(int i =  1; i<= (ncolumns); i++){
 			if ((md.getColumnName(i)).equals(geoColumn) ){
-				sql  += "ora2geojson.sdo2geojson('select GID, UF, CLASSE, CONTEXTO, NOME, VAL, LAT, LON, GEOM from " + tableName + "', ROWID, " + geoColumn + ")"	;
+				sql  += geoColumn;
 				geometryColumn = i;
 			} else {
 				sql += md.getColumnName(i);
 			}
-			if (i>= ncolumns) {
+			if (i>=(ncolumns)) {
 				sql += " from " + tableName;
 				if (whereClause.length()>0){
 					sql  += " where " + whereClause;					
@@ -115,33 +120,92 @@ public class JSonUtils {
 		
 		rs = DataBaseService.buildSelect(sql, DataBaseService.getPostgresParameters());
 		
-		//create Json property 
+		
 		if (rs.next()){
 					
 			while (!rs.isAfterLast()){
-				String json = "\"properties\":{";
+				
+				//Retrieves Geometry array.
+				STRUCT st = (oracle.sql.STRUCT) rs.getObject(geoColumn);
+				JGeometry j_geom = JGeometry.load(st);
+				String geometry="";
+				
+				//Separate LINE from POINT
+				if (tableName.equals("LINHA")){
+					
+					//Create Geometry
+					int lines_length = j_geom.getNumPoints();
+					double coordinates[] = j_geom.getOrdinatesArray();
+					geometry +="{\"type\":\"LineString\",\"coordinates\":[";
+					
+					for (int j =0; j<(lines_length*2); j+=2){
+						
+						geometry += "["+coordinates[j]+","+coordinates[j+1]+"]";
+						
+						if (!(j==(lines_length*2)-2)){
+							geometry+=",";
+						}			
+					}
+					geometry += "]}";
+				
+				}else{
+					
+					geometry += "{\"type\":\"Point\",\"coordinates\":[";
+					geometry += "["+rs.getString(6)+","+rs.getString(7)+"]";		
+					geometry += "]}";
+					
+				}
+				
+				//Creates Properties
+				String properties = "\"properties\":{";
 				boolean empty = true;			
 				for (int i = 1; i <= ncolumns; i++ ) {
 					if (md.getColumnName(i).equals(geoColumn)){
-						geometryColumn = i;
+						//geometryColumn = i;
+						
+						//Separate LINE from POINT
+						if (tableName.equals("LINHA")){
+							if (!empty){
+								properties += ",";
+							}
+							
+							//Creates BOX
+							double MBR[] = j_geom.getMBR();
+							properties += "\"box\":["+MBR[0]+","+MBR[1]+","+MBR[2]+","+MBR[3]+"]}";
+							empty=false;
+						}else
+						{
+							properties += "}";
+						}
+						
 					} else {
 						if (!empty){
-							json += ",";
+							properties += ",";
 						}
 						ResultSetMetaData rsMeta = rs.getMetaData();
 						if (rsMeta.getColumnType(i) == java.sql.Types.TIMESTAMP){
 							String dataFormatada = new SimpleDateFormat("dd/MM/yyyy").format(rs.getDate(i));
-							json += "\"" + md.getColumnName(i) + "\":\"" + dataFormatada+ "\"";	
+							properties += "\"" + md.getColumnName(i) + "\":\"" + dataFormatada+ "\"";	
 						}else{
-							json += "\"" + md.getColumnName(i) + "\":\"" + rs.getString(i)+ "\"";
+							//Separate LINE from POINT
+							if ((tableName.equals("LINHA"))&&(md.getColumnName(i).equals("NOME"))){
+								if (rs.getObject("NOME")!= null){
+									properties += "\"" + md.getColumnName(i) + "\":\"" + rs.getString(i).replaceAll("[\"\n\r]"," ")+ "\"";
+								}else{
+									properties += "\"NOME\":\"\"";
+								}
+							}else{
+								properties += "\"" + md.getColumnName(i) + "\":\"" + rs.getString(i)+ "\"";
+							}
 						}
 						empty=false;
 					}						
 				}
-				json += "}";
-				json= createJsonFeature(rs.getString(geometryColumn),json);
-				jsonFeatureArray=addArrayItem(jsonFeatureArray,json);
+				
+				
+				jsonFeatureArray=addArrayItem(jsonFeatureArray, createJsonFeature(geometry, properties));
 				rs.next();
+				
 			}
 			jsonFeatureArray=addArrayItem(jsonFeatureArray,"");
 			return createGeoJson(jsonFeatureArray,name,crs);
@@ -180,6 +244,12 @@ public class JSonUtils {
 	public static String createGeoJson(String json, String name,String crs){
 		String geoJson = "{\"name\":\""+ name +"\",\"type\":\"FeatureCollection\"";
 		geoJson = geoJson + ",\"crs\":{\"type\":\"name\",\"properties\":{\"name\":\"EPSG:" + crs + "\"}}";
+		try {
+			geoJson = geoJson + ",\"timestamp\":\""+Cryptography.dataHora()+"\"";
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		geoJson = geoJson + ",\"features\":"+json+"}";
 		return geoJson;
 	

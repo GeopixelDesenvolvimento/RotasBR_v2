@@ -16,8 +16,12 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.crypto.NoSuchPaddingException;
 import javax.swing.JOptionPane;
@@ -68,6 +72,66 @@ public class TerracoreService {
 		}
 		
 		return permissaos;
+	}
+	
+	public static int countMail() throws SQLException, IOException, ClassNotFoundException {
+		String sql = "select count(CHAVE_PETROBRAS) from DISPOSITIVOS where ROWNUM <=1";
+		ResultSet rs = DataBaseService.buildSelect(sql, DataBaseService.getPostgresParameters());
+		
+		int tamanho =0;
+		
+		// Create a select
+		sql = "select count(CHAVE_PETROBRAS) from DISPOSITIVOS";					
+	
+		rs = DataBaseService.buildSelect(sql, DataBaseService.getPostgresParameters());
+		
+		if (rs.next()){
+			
+			for (int i=0; !rs.isAfterLast(); i++){
+				
+				tamanho = rs.getInt(1);
+				rs.next();
+			}
+			
+		}
+		
+		return tamanho;
+	}
+	
+	public static String decodeQueryParamString(String decode){
+		
+		decode = decode.replaceAll(",,,,,", "#");
+		decode = decode.replaceAll("@@@@@", "&");
+		decode = decode.replaceAll("!!!!!", "+");
+		
+		return decode;
+	}
+	
+	
+
+	public static List<String> getAllPetroMail() throws SQLException, IOException, ClassNotFoundException {
+		String sql = "select CHAVE_PETROBRAS from DISPOSITIVOS where ROWNUM <=1";
+		ResultSet rs = DataBaseService.buildSelect(sql, DataBaseService.getPostgresParameters());
+		
+		//String[] emailArray= new String[countMail()];
+		List<String> listMail = new ArrayList<String>();
+		// Create a select
+		sql = "select CHAVE_PETROBRAS from DISPOSITIVOS";					
+	
+		rs = DataBaseService.buildSelect(sql, DataBaseService.getPostgresParameters());
+		
+		if (rs.next()){
+			
+			for (int i=0; !rs.isAfterLast(); i++){
+				
+				//emailArray[i] = rs.getString(1)+"@geopx.com.br";
+				listMail.add(rs.getString(1)+"@geopx.com.br");
+				rs.next();
+			}
+			
+		}
+		
+		return listMail;
 	}
 	
 	public static ArrayList<AppTabela> getUserTablesByPermissions(ArrayList<AppPermissao> permissaos) throws IOException, SQLException, ClassNotFoundException{

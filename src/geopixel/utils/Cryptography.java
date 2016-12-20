@@ -4,6 +4,10 @@ import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -37,6 +41,20 @@ public class Cryptography {
 		String pass = hash.toString(16);
 		return pass;
 	}
+	
+	public static String dataHora() throws NoSuchAlgorithmException {
+		Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Brazil/East"));
+		int ano = calendar.get(Calendar.YEAR);
+		int mes = calendar.get(Calendar.MONTH)+1; // O mês vai de 0 a 11.
+		int dia = calendar.get(Calendar.DAY_OF_MONTH);
+		int hora = calendar.get(Calendar.HOUR_OF_DAY);
+		int minuto = calendar.get(Calendar.MINUTE);
+		int segundo = calendar.get(Calendar.SECOND);
+		
+		String dataFormatada = (dia+"/"+mes+"/"+ano+"-"+hora+":"+minuto+":"+segundo);
+		
+		return dataFormatada;
+	}
 
 
 	/**
@@ -46,12 +64,12 @@ public class Cryptography {
 	 * @return String result
 	 * @throws NoSuchAlgorithmException
 	 */
-	public String generateHashMD5(String text) throws NoSuchAlgorithmException {
+	public static String generateHashMD5(String text) throws NoSuchAlgorithmException {
 		String result = "";
 
-		this.md = MessageDigest.getInstance("MD5");
-		this.md.update(text.getBytes());
-		byte[] hashMd5 = this.md.digest();
+		MessageDigest mdH = MessageDigest.getInstance("MD5");
+		mdH.update(text.getBytes());
+		byte[] hashMd5 = mdH.digest();
 		result = stringHexa(hashMd5);
 
 		return result;

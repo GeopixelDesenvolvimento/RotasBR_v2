@@ -45,7 +45,7 @@ public class AppRequestDAO {
 	public static void updateData(String tableName, String set, String whereClause)throws SQLException, IOException, ClassNotFoundException{
 		String sql = "UPDATE " +  tableName +  " SET " + set + " WHERE " + whereClause ;
 		
-		DataBaseService.buildInsert(sql, DataBaseService.connect(DataBaseService.getPostgresParameters())); 
+		DataBaseService.buildInsert(sql, DataBaseService.connect(DataBaseService.getPostgresParameters()));
 	}
 	
 	public static void deleteData(String tableName, String whereClause)throws SQLException, IOException, ClassNotFoundException{

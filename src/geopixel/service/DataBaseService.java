@@ -17,7 +17,7 @@ public class DataBaseService {
 	public static DataBase getPostgresParameters(){
 		DataBase dataBase = new DataBase();
 		
-		dataBase.setHost("192.168.0.118");
+		dataBase.setHost("192.168.0.160");
 		dataBase.setPort("1521");
 		dataBase.setUser("petrobras");
 		dataBase.setPassword("petr0braS");
@@ -82,7 +82,7 @@ public class DataBaseService {
 			count = stm.executeUpdate(sql);
 			
 		} catch (SQLException e) {
-			System.out.println("ERRO SQL");
+			//System.out.println("ERRO SQL");
 			e.printStackTrace();
 		} 
 		return count;
